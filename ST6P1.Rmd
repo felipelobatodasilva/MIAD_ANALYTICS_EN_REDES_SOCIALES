@@ -1,0 +1,222 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+
+<center> <h1>Taller 6</h1> </center>
+
+<center> <h3>Inferencia estadística usando los modelos ERGM y STERGM en un problema social </h3> </center>
+
+<br />
+
+#### Propósito
+
+En este taller podrá poner en práctica sus conocimientos para realizar inferencia estadística utilizando los modelos ERGM y STERGM, para tener así una comprensión profunda sobre los mecanismos operantes en la red.
+
+
+#### Contenido
+
+Este taller se desarrollará usando datos que corresponden a un estudio etnográfico sobre la estructura de la comunidad en un monasterio de Nueva Inglaterra, realizado por Samuel F. Sampson. Este estudio describe varias relaciones sociales entre un grupo de hombres (novicios) que se preparaban para ingresar a una orden monástica. Los conjuntos de datos que se presentan aquí contienen las relaciones afectivas entre los novicios, que se recogieron pidiéndoles que indicaran cuáles amistades valoraban más y cuáles menos. A los novicios se les pidió una primera, segunda y tercera opción en ambas preguntas. Las relaciones sociales se midieron en cinco momentos durante la estancia de Sampson en el monasterio. La cuarta medición (en el momento T4) tuvo lugar una semana antes de que cuatro de los novicios fueran expulsados del monasterio. 
+
+Basándose en sus observaciones y análisis, Sampson dividió a los novicios en cuatro grupos: Jóvenes turcos, Oposición leal, Proscritos y un grupo intersticial. La Oposición Leal está formada por los novicios que entraron primero en el monasterio. Los Jóvenes Turcos llegaron más tarde, en un periodo de cambio. Cuestionan las prácticas del monasterio, que los miembros de la Oposición Leal defienden. Algunos novicios no tomaron partido en este debate, por lo que se les califica de "intersticiales". Los parias son novicios que no fueron aceptados en el grupo. 
+
+Este taller se basó en las siguientes lecturas y fuentes de información:
+
+1. http://vlado.fmf.uni-lj.si/pub/networks/data/esna/sampson.htm.
+
+#### Situación problema
+
+Usted hace parte de un grupo académico que busca entender cómo son las relaciones de los monjes durante su época de formación. El grupo  quiere entender cuáles son los procesos que están manteniendo la red de relaciones operante. La hipótesis del grupo es que es más probable obtener clérigos mucho mejor formados y con mejores habilidades de comunicación si hacen parte de comunidades fuertemente activas. El grupo  le ha solicitado diseñar un experimento para corroborar dicha hipótesis. Sin embargo, para orientar mejor el diseño del experimento, usted plantea al grupo ver los procesos que operan en estudios similares realizados en otras comunidades de monjes. Para eso usted le propone utilizar los datos recolectados por Sampson, en el estudio previamente descrito, y utilizar sus hallazgos para guiar el diseño. 
+
+#### Instrucciones generales
+
+Esta actividad es para que la desarrolle individualmente. Después de cada pregunta, encontrará una celda donde podrá desarrollar el ejercicio solicitado. Es muy importante que guarde sus resultados en la variable o en la función que se le indica, dado que sobre esas variables usted será evaluado. 
+
+Este taller será calificado de manera automática por la plataforma, por lo que es importante que considere lo siguiente:
+
+1. No crear, eliminar o modificar celdas de este Notebook (salvo lo que se le indique) pues puedeverse afectado el proceso de calificación.
+2. No cambiar los nombres de las variables propuestas en los enunciados los ejercicios.
+3. Cuando se le solicite declarar una estructura de datos debe usar el nombre exigido.
+4. Utilizar estrictamente los tipos de datos y nombres de variable sugeridas en los enunciados de los ejercicios.
+
+#### Desarrollo
+
+Importar las librerías a usar. Instálelas si previamente no las tenías antes de importarlas.
+
+```{r,warning=FALSE,message=FALSE}
+library(readr)
+library(tidyverse)
+library(igraph)
+library(ergm)
+library(network)
+library(tergm)
+library(sna)
+library(tergm)
+```
+
+
+Vamos a cargar los datos base disponibles en la librería **ergm**. La librería contiene dos conjuntos de datos de este estudio. El primero es el conjunto **sampson** que tiene la red agregada del estudio y el segundo es **samplink** que incluye 3 de los 5 momentos de tiempo recopilados por Sampson. Cada archivo está en formato *network*.
+
+```{r}
+data("sampson")
+data("samplk")
+#Validando los datos
+print(samplike)
+print(samplk1)
+ls()
+```
+
+<center> <h2>Evaluando los procesos sobre la red agregada (ERGM)</h2> </center>
+
+Para esta parte, la idea es que utilice la red agregada para evaluar los mecanismos operantes en ésta.
+Hay dos aspectos importantes que el grupo le ha solicitado que evalue. Uno es la presencia de homofília relacionada al *grupo* o clasificación creada por Sampson y dos, la asistencia al seminario *cloisterville*. 
+
+1. **Corriendo el ERGM: ** Implemente el ergm para estimar los procesos requeridos por el grupo. Utilice las propiedades estructurales necesarias para asegurar la convergencia del modelo. 
+
+```{r,warning=FALSE,message=FALSE}
+# 3.Visualizar la red para entender la estructura
+plot(samplike, vertex.col="group", vertex.cex=3, edge.col="grey50", main="Red de Sampson")
+
+#################################------CORRER EL ERGM----------###############################################################
+#1.Crear la fórmula para el modelo, incluyendo la homofilia por grupo y la asistencia al seminario
+ergm_model1 <- ergm(samplike ~ edges + nodematch("group")+nodematch("cloisterville"))
+ergm_model2 <- ergm(samplike ~ edges + nodematch("group")+nodematch("cloisterville")+mutual)
+ergm_model3 <- ergm(samplike ~ edges + nodematch("group")+nodematch("cloisterville")+mutual+ gwesp(0.5, fixed=TRUE))
+```
+
+2. **Evaluando el desempeño del modelo:** Ahora, evalúe los resultados del modelo utilizando la función *GOF*. Utilice 1000 simulaciones para validar el comportamiento. Grafique los resultados del *GOF* y evalue la convergencia de su modelo. Concluya al respecto de la significancia de los estimadores y la convergencia del modelo. Haga los cambios pertinentes para asegurar que el modelo converja antes de seguir al siguiente literal.
+
+```{r,warning=FALSE,message=FALSE}
+# Correr el GOF la función gof() utiliza 1000 simulaciones para evaluar el ajuste del modelo por defecto
+gof.fit1<-gof(ergm_model1)
+par(mfrow = c(3,2))
+plot(gof.fit1, main = "")
+
+gof.fit1<-gof(ergm_model2)
+par(mfrow = c(3,2))
+plot(gof.fit1, main = "")
+
+gof.fit1<-gof(ergm_model3)
+par(mfrow = c(3,2))
+plot(gof.fit1, main = "")
+
+```
+En este caso vemos que con el modelo2 ERGM  hay un ligero es que tiene el mejor ajuste de las métricas. Por lo que es en este modelo que se va interpretar las variables y los odds
+<center> <h2>Evaluando los procesos sobre la red temporal (STERGM)</h2> </center>
+```{r}
+# 2.Mostrar los resultados
+summary(ergm_model2)
+exp(coef(ergm_model2))#calcular los odds ratio
+```
+¿Qué puede concluir sobre el modelo? Qué le dicen los estimadores sobre la presencia de mecanismos operantes en la red?
+**Respuesta:**
+* edges
+Estimación: -2.1042
+Significancia: Muy significativa (p < 0.0001)
+Interpretación: Un coeficiente negativo indica que la red observada tiene menos conexiones de lo esperado en una red aleatoria con el mismo número de nodos. Esto sugiere que los vínculos entre los novicios no se forman de manera indiscriminada, sino que están sujetos a ciertas restricciones o preferencias.
+
+*nodematch.group
+Estimación: 2.0436
+Significancia: Muy significativa (p < 0.0001)
+Interpretación: Este coeficiente positivo y significativo indica que los novicios tienen una fuerte tendencia a establecer conexiones dentro de su propio grupo. Esto refuerza la idea de que la pertenencia grupal es un factor clave en la formación de relaciones dentro del monasterio, lo que sugiere que las divisiones internas juegan un papel importante en la estructura de la red.
+
+*nodematch.cloisterville
+Estimación: -0.3450
+Significancia: No significativa (p = 0.20572)
+Interpretación: La asistencia al seminario Cloisterville no parece ser un factor relevante en la formación de vínculos dentro de la red. Dado que el coeficiente no es significativo, podemos concluir que la educación previa en este seminario no influye en la probabilidad de establecer conexiones sociales dentro del monasterio.
+
+*mutual
+Estimación: 1.4296
+Significancia: Significativa (p = 0.00161)
+Interpretación: Un coeficiente positivo y significativo para la variable de reciprocidad indica que las relaciones mutuas son más frecuentes de lo que se esperaría por azar. Esto sugiere que dentro del monasterio existe una tendencia hacia la correspondencia en las relaciones afectivas, lo que contribuye a una red más cohesionada y estable.
+
+Conclusión
+El modelo ERGM muestra que la estructura de la red de relaciones dentro del monasterio no es aleatoria, sino que está influenciada por la pertenencia a grupos y la reciprocidad en los vínculos. En particular:
+* Las conexiones se forman predominantemente dentro de los grupos definidos por Sampson, lo que sugiere que las diferencias ideológicas y sociales afectan fuertemente la dinámica de la red.
+* Existe una fuerte tendencia hacia la reciprocidad, lo que indica que las relaciones mutuas juegan un papel importante en la cohesión social del monasterio.
+* La asistencia a Cloisterville no parece influir en la formación de conexiones, lo que sugiere que otros factores, como la alineación ideológica o las experiencias dentro del monasterio, tienen mayor peso en la estructura de la red.
+* El coeficiente negativo de edges sugiere que la red es más fragmentada de lo que se esperaría en un modelo aleatorio, lo que podría reflejar tensiones o divisiones dentro del grupo de novicios.
+
+Dado que ya observó el comportamiento de los mecanismos operantes en la red al agregarla, es hora que evalúe esos mismos procesos en la red temporal.
+
+3. **Corriendo el STERGM: ** Implemente el stergm para estimar los procesos requeridos por el grupo. Utilice las propiedades estructurales necesarias para asegurar la convergencia del modelo. Utilice las mismas propiedades para los procesos de formación y disolución.
+
+```{r,warning=FALSE,message=FALSE}
+# Crear una lista de redes temporales
+networks <- list(samplk1, samplk2, samplk3)
+#################################------CORRER EL ERGM----------###############################################################
+
+# 1..Crear la fórmula para el modelo STERGM, utilizando las mismas propiedades para formación y disolución
+stergm_model1 <- stergm(
+  networks,
+  formation = ~edges + nodematch("group") + nodematch("cloisterville") + mutual + gwesp(0.5, fixed = TRUE), #Segun la monitora tiene que tener siempre estas funciones
+  dissolution = ~edges + nodematch("group") + nodematch("cloisterville") + mutual + gwesp(0.5, fixed = TRUE),
+  estimate = "CMLE",
+  control = control.stergm(SA.plot.progress = TRUE)
+)
+
+stergm_model2 <- stergm(
+  networks,
+  formation = ~ edges + nodematch("group") + nodematch("cloisterville") + mutual + gwesp(0.5, fixed = TRUE) + gwdsp(0.5, fixed = TRUE) + idegree(2) + odegree(2),
+  dissolution = ~ edges + nodematch("group") + nodematch("cloisterville") + mutual + gwesp(0.5, fixed = TRUE) + gwdsp(0.5, fixed = TRUE) + idegree(2) + odegree(2),
+  estimate = "CMLE",
+  control = control.stergm(SA.plot.progress = TRUE)
+)
+
+```
+
+4. **Evaluando el desempeño del modelo:** Ahora evalúe los resultados del modelo utilizando la función *GOF*. Utilice 100 simulaciones para validar el comportamiento. Grafique los resultados del *GOF* y evalue la convergencia de su modelo. Concluya al respecto de la significancia de los estimadores y la convergencia del modelo. Haga los cambios pertinentes para asegurar que el modelo converja antes de seguir al siguiente literal.
+
+```{r,warning=FALSE,message=FALSE}
+# Correr el GOF
+gof.fit1<-gof(stergm_model1)
+par(mfrow = c(3,2))
+plot(gof.fit1, main = "")
+
+gof.fit1<-gof(stergm_model2)
+par(mfrow = c(3,2))
+plot(gof.fit1, main = "")
+```
+En este caso vemos que con los dos modelos STERGM  tienen ligeros desajustes, Por lo que se tomara el modelo1  que se va interpretar las variables y los odds
+#Chicos aca pueden seguir mirando que mas modelos podemos hacer hasta que converga
+```{r}
+# 2.Mostrar los resultados
+summary(stergm_model1)
+exp(coef(stergm_model1))#calcular los odds ratio
+```
+
+
+¿Qué puede concluir sobre el modelo? ¿Qué le dicen los estimadores sobre la presencia de mecanismos operantes en la red en el tiempo?
+**Respuesta:**
+El summary muestra dos partes: Form (Formation) y Persist (Persistence), que corresponden a la probabilidad de crear o de mantener los lazos a lo largo del tiempo:
+
+Form ~ edges: Valor negativo y muy significativo; en general, la probabilidad base de crear arcos es baja (la red es relativamente dispersa).
+
+Form ~ nodematch.group: Positivo y significativo; la homofilia de grupo influye fuertemente en la creación de lazos. Si dos novicios son del mismo grupo, tienen más probabilidades de crear un vínculo.
+
+Form ~ nodematch.cloisterville: No significativo; la asistencia al seminario no aumenta ni disminuye la formación de lazos (coincide con lo visto en el ERGM agregado).
+
+Form ~ mutual: Positivo y significativo; existe reciprocidad: si un novicio nomina a otro, se incrementa la probabilidad de que el segundo también lo nomine (para la creación de un lazo).
+
+Form ~ gwesp(0.5): No significativo; no hay evidencia clara de cierre triádico (triangulación) en la formación.
+
+Persist ~ edges: No significativo; la densidad base no explica mucho sobre la persistencia (no incrementa ni reduce la disolución).
+
+Persist ~ nodematch.group: Positivo y significativo; los lazos dentro del mismo grupo se mantienen en el tiempo con mayor probabilidad. Esto refuerza la idea de que la homofilia grupal no solo facilita la creación de vínculos sino también su conservación.
+
+Persist ~ nodematch.cloisterville: No significativo; Cloisterville no es relevante para mantener lazos.
+
+Persist ~ mutual: No significativo; la reciprocidad no está asociada significativamente con la duración de los lazos, aunque sí con su creación.
+
+Persist ~ gwesp(0.5): No significativo; el cierre triádico no influye en mantener los lazos en el tiempo.
+
+Conclusión del STERGM
+
+La formación de lazos se ve impulsada por la homofilia de “group” y la reciprocidad.
+La persistencia de lazos se ve explicada especialmente por pertenecer al mismo grupo, mientras que la reciprocidad no afecta su disolución.
+Cloisterville y el efecto triádico (gwesp) no son factores relevantes.
+
+5. ***Conclusiones finales:*** Teniendo en cuenta los resultados de la simulaciones con los modelos ERGM y STERGM, ¿qué podría concluir sobre las dinámicas de las redes de estos grupos de monjes?
+
+A nivel agregado (ERGM), la red está fuertemente explicada por la homofilia de grupo y la reciprocidad, mientras que Cloisterville no muestra importancia. A nivel temporal (STERGM), se ve que la creación (formation) de los vínculos se rige por la homofilia de grupo y la reciprocidad, y la persistencia (persist) también depende de la homofilia de grupo, pero no de la reciprocidad. En conjunto, esto sugiere que hay subcomunidades muy cohesionadas dentro de cada grupo (las conexiones son más probables y se conservan más si son del mismo grupo). La reciprocidad facilita la aparición de nuevos lazos, reforzando los vínculos mutuos, pero no necesariamente evita su ruptura en el largo plazo. Al no ser significativa la asistencia a “cloisterville”, se concluye que la formación previa en ese seminario no es un factor determinante en la configuración de la red de amistades; en cambio, las divisiones grupales y la reciprocidad interna son los ejes fuertes que explican la estructura y dinámica de las relaciones. En cuanto al GOF, aunque hay ligeros desajustes (especialmente en grados altos y distancias geodésicas), los modelos explican razonablemente la red. Si se buscara un mejor ajuste, podrían incluirse más estadísticas. En definitiva, la red está fragmentada por grupos y reforzada por la reciprocidad para la creación de lazos, lo cual responde a la hipótesis de que las comunidades activas se basan en divisiones internas (los grupos de Sampson) y en la tendencia recíproca para establecer y retener relaciones.
